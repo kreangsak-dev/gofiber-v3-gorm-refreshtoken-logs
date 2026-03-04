@@ -1,0 +1,12 @@
+# Environment
+# .env
+
+# Build
+tmp/
+*.exe
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
