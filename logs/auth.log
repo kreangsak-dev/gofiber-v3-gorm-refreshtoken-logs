@@ -35,3 +35,37 @@
 [AUTH] 2026/03/08 04:14:21 ERROR: Login failed (wrong password) for: test01
 [AUTH] 2026/03/08 04:14:26 ERROR: Login failed (wrong password) for: test01
 [AUTH] 2026/03/08 04:14:29 User logged in: test01
+[AUTH] 2026/03/08 16:15:42 User registered: test02
+[AUTH] 2026/03/08 16:37:12 User logged out
+[AUTH] 2026/03/08 16:37:28 ERROR: Login failed (wrong password) for: test01
+[AUTH] 2026/03/08 16:37:32 User logged in: test01
+[AUTH] 2026/03/08 16:41:09 User logged out
+[AUTH] 2026/03/08 16:41:19 User logged in: test02
+[AUTH] 2026/03/08 16:43:04 User logged out
+[AUTH] 2026/03/08 16:43:13 User logged in: test02
+[AUTH] 2026/03/08 16:44:20 User logged out
+[AUTH] 2026/03/08 16:45:16 User logged in: test02
+[AUTH] 2026/03/08 16:47:17 User logged out
+[AUTH] 2026/03/08 16:47:26 User logged in: test02
+[AUTH] 2026/03/08 16:48:22 User logged out
+[AUTH] 2026/03/08 16:53:48 User logged in: test01
+[AUTH] 2026/03/08 16:53:52 User logged out
+[AUTH] 2026/03/08 16:54:18 User logged in: test01
+[AUTH] 2026/03/08 16:54:32 User logged out
+[AUTH] 2026/03/08 16:55:00 User logged in: test02
+[AUTH] 2026/03/08 17:00:55 User logged out
+[AUTH] 2026/03/08 17:01:02 User logged in: test01
+[AUTH] 2026/03/08 17:01:05 User logged out
+[AUTH] 2026/03/08 17:01:12 User logged in: test02
+[AUTH] 2026/03/08 17:01:29 Super Admin updated user test02 role to admin
+[AUTH] 2026/03/08 17:01:31 Super Admin updated user test02 role to super_admin
+[AUTH] 2026/03/08 17:02:06 Super Admin updated user test01 role to admin
+[AUTH] 2026/03/08 17:02:10 User logged out
+[AUTH] 2026/03/08 17:02:17 User logged in: test01
+[AUTH] 2026/03/08 17:02:25 User logged out
+[AUTH] 2026/03/08 17:09:18 ERROR: Login failed (wrong password) for: test02
+[AUTH] 2026/03/08 17:09:31 ERROR: Login failed (wrong password) for: test02
+[AUTH] 2026/03/08 17:10:21 User logged in: test02
+[AUTH] 2026/03/08 17:10:47 User logged out
+[AUTH] 2026/03/08 17:23:40 User logged in: test02
+[AUTH] 2026/03/08 17:23:56 User logged out

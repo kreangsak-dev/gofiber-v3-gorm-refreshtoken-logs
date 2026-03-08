@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func SetupRoutes(app *fiber.App, ph *handler.ProductHandler, ah *handler.AuthHandler, lh *handler.LogHandler, jwtSecret string) {
+func SetupRoutes(app *fiber.App, ph *handler.ProductHandler, ah *handler.AuthHandler, lh *handler.LogHandler, uh *handler.UserHandler, dh *handler.DashboardHandler, jwtSecret string) {
 	api := app.Group("/api")
 
 	// Health check
@@ -31,11 +31,21 @@ func SetupRoutes(app *fiber.App, ph *handler.ProductHandler, ah *handler.AuthHan
 
 	// Protected (ต้อง login)
 	products.Use(middleware.JWTProtected(jwtSecret), middleware.ValidateAccessToken())
-	products.Post("/", ph.Create)
-	products.Patch("/:id", ph.Update)
-	products.Delete("/:id", ph.Delete)
+	products.Post("/", middleware.RequireRole("admin"), ph.Create)
+	products.Patch("/:id", middleware.RequireRole("admin"), ph.Update)
+	products.Delete("/:id", middleware.RequireRole("admin"), ph.Delete)
 
 	// --- Log routes (protected) ---
-	logs := api.Group("/logs", middleware.JWTProtected(jwtSecret), middleware.ValidateAccessToken())
+	logs := api.Group("/logs", middleware.JWTProtected(jwtSecret), middleware.ValidateAccessToken(), middleware.RequireRole("admin"))
 	logs.Get("/:type", lh.GetLogs)
+
+	// --- User routes (Super Admin only) ---
+	users := api.Group("/users", middleware.JWTProtected(jwtSecret), middleware.ValidateAccessToken(), middleware.RequireRole("super_admin"))
+	users.Get("/", uh.GetAllUsers)
+	users.Post("/", uh.CreateUser)
+	users.Patch("/:id/role", uh.UpdateUserRole)
+
+	// --- Dashboard routes ---
+	dashboard := api.Group("/dashboard", middleware.JWTProtected(jwtSecret), middleware.ValidateAccessToken())
+	dashboard.Get("/summary", dh.GetSummary)
 }

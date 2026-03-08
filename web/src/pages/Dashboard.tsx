@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
-import { api, apiPrivate } from "../lib/api";
+import { api, apiPrivate, getDashboardSummary } from "../lib/api";
+import { useAuthStore } from "../store/authStore";
 
 interface Product {
   id: number;
@@ -10,9 +11,23 @@ interface Product {
   stock: number;
 }
 
+interface DashboardSummary {
+  total_products: number;
+  total_value: number;
+  low_stock_count: number;
+  total_users?: number;
+  system_logs?: number;
+}
+
 export default function Dashboard() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
   const [products, setProducts] = useState<Product[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -22,16 +37,28 @@ export default function Dashboard() {
     stock: 0,
   });
 
-  const fetchProducts = () => {
-    api
-      .get("/products")
-      .then((res) => setProducts(res.data.data.items || []))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+  const fetchData = async () => {
+    setLoading(true);
+    setSummaryLoading(true);
+    try {
+      const [productsRes, summaryRes] = await Promise.all([
+        api.get("/products"),
+        getDashboardSummary().catch(() => null), // If fails (e.g. rights issue), fallback to null
+      ]);
+      setProducts(productsRes.data.data.items || []);
+      if (summaryRes && summaryRes.data) {
+        setSummary(summaryRes.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setSummaryLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchData();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,8 +71,7 @@ export default function Dashboard() {
       }
       setIsModalOpen(false);
       resetForm();
-      setLoading(true);
-      fetchProducts();
+      fetchData(); // Refreshes both table and summary widgets to match changes
     } catch (err: unknown) {
       if (isAxiosError(err)) {
         alert(err.response?.data?.error || "เกิดข้อผิดพลาด");
@@ -59,8 +85,7 @@ export default function Dashboard() {
     if (!window.confirm("คุณแน่ใจหรือไม่ที่จะลบสินค้านี้?")) return;
     try {
       await apiPrivate.delete(`/products/${id}`);
-      setLoading(true);
-      fetchProducts();
+      fetchData(); // Refreshes both
     } catch (err: unknown) {
       if (isAxiosError(err)) {
         alert(err.response?.data?.error || "ลบไม่สำเร็จ");
@@ -92,12 +117,118 @@ export default function Dashboard() {
       <div className="fixed top-20 right-[-5%] w-120 h-120 bg-primary/5 rounded-full blur-3xl opacity-50 pointer-events-none -z-10"></div>
       <div className="fixed bottom-0 left-[-10%] w-120 h-120 bg-chart-2/5 rounded-full blur-3xl opacity-50 pointer-events-none -z-10"></div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 bg-card/60 backdrop-blur-md p-6 rounded-2xl border shadow-sm">
+      {/* --- Dashboard Summary Widgets --- */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold tracking-tight mb-4">
+          ภาพรวมคลังสินค้า
+        </h2>
+
+        {summaryLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-28 bg-card/60 rounded-2xl border shadow-sm animate-pulse"
+              ></div>
+            ))}
+          </div>
+        ) : summary ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 xl:grid-cols-4">
+            {/* Widget: Total Products */}
+            <div className="flex flex-col p-6 bg-card/60 backdrop-blur-2xl rounded-3xl border border-white/20 dark:border-white/5 shadow-xl shadow-black/5 dark:shadow-black/20 hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-blue-500/20 transition-colors"></div>
+              <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2 relative z-10">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></span>{" "}
+                สินค้าทั้งหมด
+              </span>
+              <span className="text-4xl font-black text-foreground relative z-10 tracking-tight">
+                {summary.total_products.toLocaleString()}{" "}
+                <span className="text-base font-normal text-muted-foreground">
+                  รายการ
+                </span>
+              </span>
+            </div>
+
+            <div className="flex flex-col p-6 bg-card/60 backdrop-blur-2xl rounded-3xl border border-white/20 dark:border-white/5 shadow-xl shadow-black/5 dark:shadow-black/20 hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-emerald-500/20 transition-colors"></div>
+              <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2 relative z-10">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>{" "}
+                มูลค่ารวม (บาท)
+              </span>
+              <span className="text-4xl font-black text-emerald-600 dark:text-emerald-400 relative z-10 tracking-tight">
+                ฿
+                {summary.total_value.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+
+            <div className="flex flex-col p-6 bg-card/60 backdrop-blur-2xl rounded-3xl border border-white/20 dark:border-white/5 shadow-xl shadow-black/5 dark:shadow-black/20 hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-amber-500/20 transition-colors"></div>
+              <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2 relative z-10">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${summary.low_stock_count > 0 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]" : "bg-muted"}`}
+                ></span>{" "}
+                สต็อกเหลือน้อย
+              </span>
+              <span className="text-4xl font-black text-foreground relative z-10 tracking-tight">
+                <span
+                  className={
+                    summary.low_stock_count > 0 ? "text-amber-500" : ""
+                  }
+                >
+                  {summary.low_stock_count.toLocaleString()}
+                </span>{" "}
+                <span className="text-base font-normal text-muted-foreground">
+                  รายการ
+                </span>
+              </span>
+            </div>
+
+            {isAdmin && summary.total_users !== undefined && (
+              <div className="flex flex-col p-6 bg-primary/5 backdrop-blur-2xl rounded-3xl border border-primary/20 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/30 transition-colors"></div>
+                <span className="text-[13px] font-bold text-primary/80 uppercase tracking-widest mb-3 flex items-center gap-2 relative z-10">
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_var(--color-primary)]"></span>{" "}
+                  ผู้ใช้งานทั้งหมด (Admin)
+                </span>
+                <span className="text-4xl font-black text-primary relative z-10 tracking-tight">
+                  {summary.total_users.toLocaleString()}{" "}
+                  <span className="text-base font-normal opacity-70">คน</span>
+                </span>
+              </div>
+            )}
+
+            {isAdmin && summary.system_logs !== undefined && (
+              <div className="flex flex-col p-6 bg-destructive/5 backdrop-blur-2xl rounded-3xl border border-destructive/20 shadow-xl shadow-destructive/5 hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group col-span-full xl:col-span-1">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-destructive/20 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-destructive/30 transition-colors"></div>
+                <span className="text-[13px] font-bold text-destructive/80 uppercase tracking-widest mb-3 flex items-center gap-2 relative z-10">
+                  <span className="w-2.5 h-2.5 rounded-full bg-destructive shadow-[0_0_10px_var(--color-destructive)]"></span>{" "}
+                  ระบบขัดข้อง (24h)
+                </span>
+                <span className="text-4xl font-black text-destructive relative z-10 tracking-tight">
+                  {summary.system_logs.toLocaleString()}{" "}
+                  <span className="text-base font-normal opacity-70">
+                    รายการ
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 text-center text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800">
+            ไม่สามารถโหลดข้อมูลสรุปได้ (อาจไม่มีสิทธิ์เข้าถึง)
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 bg-card/40 backdrop-blur-3xl p-8 rounded-[2rem] border border-white/20 dark:border-white/5 shadow-2xl shadow-black/5 dark:shadow-black/20">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-linear-to-r from-primary to-chart-1 bg-clip-text text-transparent inline-block">
+          <h1 className="text-4xl font-black tracking-tight bg-linear-to-r from-primary to-indigo-500 bg-clip-text text-transparent inline-block pb-1">
             จัดการคลังสินค้า
           </h1>
-          <p className="text-muted-foreground mt-1 font-medium">
+          <p className="text-muted-foreground mt-2 font-medium text-[15px]">
             เพิ่มลบแก้ไขสินค้าในระบบ แบบเรียลไทม์
           </p>
         </div>
@@ -129,25 +260,19 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="border rounded-2xl bg-card/80 backdrop-blur-sm overflow-hidden shadow-lg border-white/10">
+      <div className="border border-white/20 dark:border-white/5 rounded-[2rem] bg-card/60 backdrop-blur-3xl overflow-hidden shadow-2xl shadow-black/5 dark:shadow-black/20">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b">
+          <table className="w-full text-sm text-left align-middle">
+            <thead className="text-[13px] text-muted-foreground/80 font-bold uppercase tracking-widest bg-muted/40 border-b border-border/50">
               <tr>
-                <th className="px-6 py-5 font-semibold tracking-wider">ไอดี</th>
-                <th className="px-6 py-5 font-semibold tracking-wider">
-                  ชื่อสินค้า
-                </th>
-                <th className="px-6 py-5 font-semibold tracking-wider">ราคา</th>
-                <th className="px-6 py-5 font-semibold tracking-wider">
-                  สต็อก
-                </th>
-                <th className="px-6 py-5 font-semibold tracking-wider text-right">
-                  จัดการ
-                </th>
+                <th className="px-8 py-6 w-24">ID</th>
+                <th className="px-8 py-6">ชื่อสินค้า</th>
+                <th className="px-8 py-6">ราคา</th>
+                <th className="px-8 py-6">สต็อก</th>
+                <th className="px-8 py-6 text-right">จัดการ</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/30">
               {loading ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-20 text-center">
@@ -189,37 +314,37 @@ export default function Dashboard() {
                 products.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b last:border-0 hover:bg-muted/40 transition-colors group"
+                    className="group hover:bg-muted/30 transition-colors duration-200"
                   >
-                    <td className="px-6 py-5 font-mono text-muted-foreground/70">
-                      {p.id}
+                    <td className="px-8 py-6 font-mono text-muted-foreground/60 font-medium tracking-wider">
+                      #{p.id}
                     </td>
-                    <td className="px-6 py-5 font-semibold group-hover:text-primary transition-colors">
+                    <td className="px-8 py-6 font-bold text-[15px] group-hover:text-primary transition-colors">
                       {p.name}
                     </td>
-                    <td className="px-6 py-5">
-                      <span className="inline-flex py-1 px-3 items-center rounded-full bg-emerald-100/50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800">
+                    <td className="px-8 py-6">
+                      <span className="inline-flex py-1.5 px-3.5 items-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 font-bold border border-emerald-500/20">
                         ฿{p.price.toLocaleString()}
                       </span>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-8 py-6">
                       <span
-                        className={`inline-flex py-1 px-3 items-center rounded-full font-bold border ${p.stock > 0 ? "bg-blue-100/50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800" : "bg-destructive/10 text-destructive border-destructive/20"}`}
+                        className={`inline-flex py-1.5 px-3.5 items-center rounded-xl font-bold border ${p.stock > 0 ? "bg-blue-500/10 text-blue-700 border-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400" : "bg-destructive/10 text-destructive border-destructive/20"}`}
                       >
                         {p.stock}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-8 py-6 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => openEdit(p)}
-                          className="bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground font-semibold text-xs px-3 py-1.5 rounded-lg transition-all"
+                          className="bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold text-xs px-4 py-2 rounded-xl transition-all active:scale-95"
                         >
                           แก้ไข
                         </button>
                         <button
                           onClick={() => handleDelete(p.id)}
-                          className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground font-semibold text-xs px-3 py-1.5 rounded-lg transition-all"
+                          className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white font-bold text-xs px-4 py-2 rounded-xl transition-all active:scale-95"
                         >
                           ลบ
                         </button>

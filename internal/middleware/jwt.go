@@ -43,6 +43,42 @@ func ValidateAccessToken() fiber.Handler {
 	}
 }
 
+// RequireRole ตรวจสอบว่า User ตัวนี้มีสิทธิ์ที่อนุญาตให้เข้าถึง API นี้หรือไม่
+func RequireRole(allowedRoles ...string) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		token := jwtware.FromContext(c)
+		if token == nil {
+			return fiber.NewError(fiber.StatusUnauthorized, "กรุณาเข้าสู่ระบบ")
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return fiber.NewError(fiber.StatusUnauthorized, "token ไม่ถูกต้อง")
+		}
+
+		userRole, ok := claims["role"].(string)
+		if !ok {
+			// ถ้าไม่มีฟิลด์ role ใน JWT (อาจเป็น token เก่า) ให้ตีกลับ
+			return fiber.NewError(fiber.StatusForbidden, "ไม่มีสิทธิ์เข้าถึง (ไม่พบ Role)")
+		}
+
+		// ✨ พิเศษ: super_admin เข้าได้ทุกที่โดยไม่ต้องระบุชื่อ
+		if userRole == "super_admin" {
+			return c.Next()
+		}
+
+		// ตรวจสอบว่า Role ของ user ตัวนี้อยู่ในรายการที่อนุญาตหรือไม่
+		for _, role := range allowedRoles {
+			if userRole == role {
+				return c.Next() // ผ่าน
+			}
+		}
+
+		// ถ้าไม่ตรงกับอะไรเลย
+		return fiber.NewError(fiber.StatusForbidden, "ไม่มีสิทธิ์เข้าถึงข้อมูลส่วนนี้")
+	}
+}
+
 // GetUserID ดึง user_id จาก JWT claims
 func GetUserID(c fiber.Ctx) (uint, error) {
 	token := jwtware.FromContext(c)

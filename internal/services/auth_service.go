@@ -63,6 +63,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest, ip
 	user := &model.User{
 		Username: req.Username,
 		Password: string(hashed),
+		Role:     "user", // บังคับสิทธิ์เป็น user เสมอสำหรับ public register
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
@@ -135,7 +136,7 @@ func (s *authService) Refresh(ctx context.Context, rawToken string) (*dto.AuthRe
 
 	// 2. Token Theft Detection — ถ้า token ถูก revoke แล้วแต่มีคนใช้อีก
 	if stored.Revoked {
-		logger.ErrorAuth("Token theft detected! Revoking family: "+stored.FamilyID, "", "", "", &stored.UserID)
+		logger.ErrorAuth("Token Theft Detected! Revoking Family: "+stored.FamilyID, "", "", "", &stored.UserID)
 		_ = s.tokenRepo.RevokeTokenFamily(ctx, stored.FamilyID)
 		return nil, fiber401Error("ตรวจพบการใช้ token ซ้ำ กรุณาเข้าสู่ระบบใหม่")
 	}
@@ -232,6 +233,7 @@ func (s *authService) issueTokenPair(ctx context.Context, user *model.User, sess
 
 	return &dto.AuthResponse{
 		UserID:       user.ID,
+		Role:         user.Role,
 		AccessToken:  accessToken,
 		RefreshToken: rawToken,
 	}, nil
@@ -241,6 +243,7 @@ func (s *authService) generateAccessToken(user *model.User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":  user.ID,
 		"username": user.Username,
+		"role":     user.Role,
 		"type":     "access",
 		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 		"iat":      time.Now().Unix(),

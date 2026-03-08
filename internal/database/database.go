@@ -13,15 +13,26 @@ import (
 func Connect(cfg *config.Config) *gorm.DB {
 	dsn := cfg.DatabaseURL
 
+	// Customizing logger
+	newLogger := logger.New(
+		log.New(log.Writer(), "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  logger.Error,
+			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      false,
+			Colorful:                  true,
+		},
+	)
+
+	// เปิดการเชื่อมต่อเพียงครั้งเดียว
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		// Logger: logger.Default.LogMode(logger.Info),
-		Logger: logger.Default.LogMode(logger.Error),
+		Logger: newLogger,
 	})
 	if err != nil {
 		log.Fatalf("Cannot connect DB %v", err)
 	}
 
-	// Log connect DB
 	log.Println("Connected Database")
 
 	// Connection pool

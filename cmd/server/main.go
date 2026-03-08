@@ -59,6 +59,10 @@ func main() {
 
 	logH := handler.NewLogHandler()
 
+	userH := handler.NewUserHandler(userRepo, validator.New()) // Add UserHandler
+
+	dashboardH := handler.NewDashboardHandler(db)
+
 	// 5. Fiber app + StructValidator
 	app := fiber.New(fiber.Config{
 		AppName:         "GoFiber DI API v1.0",
@@ -72,7 +76,7 @@ func main() {
 	app.Use(middleware.CORS())
 
 	// 7. Routes
-	routes.SetupRoutes(app, productH, authH, logH, cfg.JWTSecret)
+	routes.SetupRoutes(app, productH, authH, logH, userH, dashboardH, cfg.JWTSecret)
 
 	// 8. Graceful shutdown
 	quit := make(chan os.Signal, 1)

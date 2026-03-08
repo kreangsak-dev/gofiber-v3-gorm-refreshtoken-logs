@@ -16,6 +16,7 @@ type LoginRequest struct {
 
 type AuthResponse struct {
 	UserID       uint   `json:"user_id"`
+	Role         string `json:"role"` // ส่ง role กลับไปให้ frontend รับรู้ด้วย
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"` // raw random token (ไม่ใช่ JWT)
 }

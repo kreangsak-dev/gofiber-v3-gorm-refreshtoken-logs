@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Logs from "./pages/Logs";
+import UserManagement from "./pages/UserManagement";
 import { useAuthStore } from "./store/authStore";
 import { useEffect } from "react";
 
@@ -36,9 +37,9 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-background font-sans antialiased text-foreground selection:bg-primary selection:text-primary-foreground">
+      <div className="min-h-screen bg-background font-sans antialiased text-foreground selection:bg-primary/30 selection:text-primary">
         <Navbar />
-        <main className="flex-1">
+        <main className="flex-1 pt-24 pb-12">
           <Routes>
             <Route path="/" element={<Home />} />
 
@@ -59,6 +60,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <UserManagement />
                 </ProtectedRoute>
               }
             />

@@ -81,3 +81,27 @@ apiPrivate.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// --- Super Admin User Management APIs ---
+
+export const getUsers = async () => {
+  const res = await apiPrivate.get("/users");
+  return res.data;
+};
+
+export const createUser = async (data: Record<string, unknown>) => {
+  const res = await apiPrivate.post("/users", data);
+  return res.data;
+};
+
+export const updateUserRole = async (id: number, role: string) => {
+  const res = await apiPrivate.patch(`/users/${id}/role`, { role });
+  return res.data;
+};
+
+// --- Dashboard Summary APIs ---
+
+export const getDashboardSummary = async () => {
+  const res = await apiPrivate.get("/dashboard/summary");
+  return res.data;
+};

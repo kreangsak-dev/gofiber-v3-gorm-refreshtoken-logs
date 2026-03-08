@@ -2,6 +2,7 @@ package handler
 
 import (
 	"os"
+	"time"
 
 	"nurse-table/internal/dto"
 	service "nurse-table/internal/services"
@@ -36,6 +37,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 		"message": "ลงทะเบียนสำเร็จ",
 		"data": fiber.Map{
 			"user_id": result.UserID,
+			"role":    result.Role,
 		},
 	})
 }
@@ -59,6 +61,7 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 		"message": "เข้าสู่ระบบสำเร็จ",
 		"data": fiber.Map{
 			"user_id": result.UserID,
+			"role":    result.Role,
 		},
 	})
 }
@@ -125,5 +128,28 @@ func setAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {
 }
 
 func clearAuthCookies(c fiber.Ctx) {
-	c.ClearCookie("access_token", "refresh_token")
+	isProduction := os.Getenv("ENV") == "production"
+	pastTime := time.Now().Add(-24 * time.Hour)
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		Expires:  pastTime,
+		Secure:   isProduction,
+		HTTPOnly: true,
+		SameSite: fiber.CookieSameSiteLaxMode,
+	})
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		Expires:  pastTime,
+		Secure:   isProduction,
+		HTTPOnly: true,
+		SameSite: fiber.CookieSameSiteLaxMode,
+	})
 }
