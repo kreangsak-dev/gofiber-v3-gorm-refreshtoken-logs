@@ -3,6 +3,7 @@ package handler
 import (
 	"bufio"
 	"io"
+	"nurse-table/internal/utils"
 	"os"
 
 	"github.com/gofiber/fiber/v3"
@@ -31,11 +32,7 @@ func (h *LogHandler) GetLogs(c fiber.Ctx) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return c.JSON(fiber.Map{
-				"success": true,
-				"data":    []string{},
-				"message": "ยังไม่มีข้อมูล Log",
-			})
+			return utils.SuccessMessageResponse(c, "ยังไม่มีข้อมูล Log", []string{})
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "ไม่สามารถอ่านไฟล์ Log ได้")
 	}
@@ -57,8 +54,5 @@ func (h *LogHandler) GetLogs(c fiber.Ctx) error {
 		lines = lines[len(lines)-maxLines:]
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    lines,
-	})
+	return utils.SuccessResponse(c, lines)
 }

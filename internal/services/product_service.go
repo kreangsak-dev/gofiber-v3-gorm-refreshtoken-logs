@@ -133,7 +133,6 @@ func (s *productService) Delete(ctx context.Context, id uint) error {
 }
 
 // --- Helpers ---
-
 func toResponse(p model.Product) dto.ProductResponse {
 	return dto.ProductResponse{
 		ID:          p.ID,

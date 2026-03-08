@@ -14,12 +14,12 @@ import (
 	"nurse-table/internal/config"
 	"nurse-table/internal/database"
 	handler "nurse-table/internal/handlers"
+	"nurse-table/internal/logger"
 	"nurse-table/internal/middleware"
 	model "nurse-table/internal/models"
 	repository "nurse-table/internal/repositories"
 	"nurse-table/internal/routes"
 	service "nurse-table/internal/services"
-	"nurse-table/internal/utils/logger"
 )
 
 // structValidator — Fiber v3 StructValidator ใช้ go-playground/validator
@@ -39,7 +39,8 @@ func main() {
 	db := database.Connect(cfg)
 
 	// 3. AutoMigrate
-	if err := db.AutoMigrate(&model.Product{}, &model.User{}, &model.SystemLog{}); err != nil {
+	if err := db.AutoMigrate(&model.Product{}, &model.User{}, &model.SystemLog{}, &model.Session{},
+		&model.RefreshToken{}); err != nil {
 		log.Fatalf("AutoMigrate fail: %v", err)
 	}
 
@@ -52,7 +53,8 @@ func main() {
 	productH := handler.NewProductHandler(productSvc)
 
 	userRepo := repository.NewUserRepository(db)
-	authSvc := service.NewAuthService(userRepo, cfg.JWTSecret)
+	tokenRepo := repository.NewTokenRepository(db)
+	authSvc := service.NewAuthService(userRepo, tokenRepo, cfg.JWTSecret)
 	authH := handler.NewAuthHandler(authSvc)
 
 	logH := handler.NewLogHandler()

@@ -8,3 +8,30 @@
 [AUTH] 2026/03/05 00:42:55 User logged in successfully: test01
 [AUTH] 2026/03/05 01:03:24 User registered successfully: tester
 [AUTH] 2026/03/05 01:12:34 User logged in successfully: test01
+[AUTH] 2026/03/07 16:16:08 ERROR: Login failed (wrong password) for: test01
+[AUTH] 2026/03/07 16:16:14 User logged in successfully: test01
+[AUTH] 2026/03/08 01:37:12 User logged in successfully: test01
+[AUTH] 2026/03/08 01:41:52 User logged in successfully: test01
+[AUTH] 2026/03/08 01:42:47 User logged in successfully: test01
+[AUTH] 2026/03/08 01:49:58 ERROR: Login failed (wrong password) for: test01
+[AUTH] 2026/03/08 01:50:04 User logged in successfully: test01
+[AUTH] 2026/03/08 02:36:18 User logged in: test01
+[AUTH] 2026/03/08 02:37:39 User logged out
+[AUTH] 2026/03/08 02:38:17 User logged in: test01
+[AUTH] 2026/03/08 02:52:37 User logged in: test01
+[AUTH] 2026/03/08 02:57:12 User logged in: test01
+[AUTH] 2026/03/08 03:17:26 User logged out
+[AUTH] 2026/03/08 03:17:33 User logged in: test01
+[AUTH] 2026/03/08 03:22:08 User logged out
+[AUTH] 2026/03/08 03:23:34 User logged in: test01
+[AUTH] 2026/03/08 03:36:23 User logged out
+[AUTH] 2026/03/08 03:37:51 User logged in: test01
+[AUTH] 2026/03/08 03:41:44 User logged in: test01
+[AUTH] 2026/03/08 03:44:10 User logged in: test01
+[AUTH] 2026/03/08 03:51:19 User logged out
+[AUTH] 2026/03/08 03:52:01 User logged in: test01
+[AUTH] 2026/03/08 04:02:39 User logged in: test01
+[AUTH] 2026/03/08 04:10:14 User logged in: test01
+[AUTH] 2026/03/08 04:14:21 ERROR: Login failed (wrong password) for: test01
+[AUTH] 2026/03/08 04:14:26 ERROR: Login failed (wrong password) for: test01
+[AUTH] 2026/03/08 04:14:29 User logged in: test01

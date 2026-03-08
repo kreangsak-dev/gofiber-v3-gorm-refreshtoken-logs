@@ -33,7 +33,7 @@ func InitLogger(db *gorm.DB) {
 	systemWriter := &lumberjack.Logger{
 		Filename:   "logs/system.log",
 		MaxSize:    10, // megabytes
-		MaxBackups: 1,  // เก็บไฟล์เก่าแค่ 1 ไฟล์ (เขียนทับ)
+		MaxBackups: 5,  // เก็บไฟล์เก่าแค่ 5 ไฟล์ (เขียนทับ)
 		MaxAge:     30, // days
 		Compress:   true,
 	}
@@ -42,7 +42,7 @@ func InitLogger(db *gorm.DB) {
 	authWriter := &lumberjack.Logger{
 		Filename:   "logs/auth.log",
 		MaxSize:    10, // megabytes
-		MaxBackups: 1,  // เก็บไฟล์เก่าแค่ 1 ไฟล์ (เขียนทับ)
+		MaxBackups: 5,  // เก็บไฟล์เก่าแค่ 5 ไฟล์ (เขียนทับ)
 		MaxAge:     30, // days
 		Compress:   true,
 	}

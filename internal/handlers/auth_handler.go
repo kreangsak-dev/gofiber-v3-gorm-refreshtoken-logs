@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"os"
+
 	"nurse-table/internal/dto"
 	service "nurse-table/internal/services"
-
-	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -24,7 +24,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "ข้อมูลไม่ถูกต้อง: "+err.Error())
 	}
 
-	result, err := h.svc.Register(c.Context(), &req)
+	result, err := h.svc.Register(c.Context(), &req, c.IP(), c.Get("User-Agent"))
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 		"success": true,
 		"message": "ลงทะเบียนสำเร็จ",
 		"data": fiber.Map{
-			"user_id": result.AccessToken, // Just return some non-sensitive data if needed, or remove
+			"user_id": result.UserID,
 		},
 	})
 }
@@ -47,7 +47,7 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "ข้อมูลไม่ถูกต้อง: "+err.Error())
 	}
 
-	result, err := h.svc.Login(c.Context(), &req)
+	result, err := h.svc.Login(c.Context(), &req, c.IP(), c.Get("User-Agent"))
 	if err != nil {
 		return err
 	}
@@ -56,25 +56,21 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"success": true,
+		"message": "เข้าสู่ระบบสำเร็จ",
 		"data": fiber.Map{
-			"user_id": result.AccessToken,
+			"user_id": result.UserID,
 		},
 	})
 }
 
 // POST /api/auth/refresh
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
-	// Read refresh token from cookies instead of body
 	refreshToken := c.Cookies("refresh_token")
 	if refreshToken == "" {
 		return fiber.NewError(fiber.StatusUnauthorized, "ไม่มี refresh token ในระบบ")
 	}
 
-	req := dto.RefreshRequest{
-		RefreshToken: refreshToken,
-	}
-
-	result, err := h.svc.Refresh(c.Context(), &req)
+	result, err := h.svc.Refresh(c.Context(), refreshToken)
 	if err != nil {
 		return err
 	}
@@ -89,7 +85,11 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 
 // POST /api/auth/logout
 func (h *AuthHandler) Logout(c fiber.Ctx) error {
+	refreshToken := c.Cookies("refresh_token")
+	_ = h.svc.Logout(c.Context(), refreshToken)
+
 	clearAuthCookies(c)
+
 	return c.JSON(fiber.Map{
 		"success": true,
 		"message": "ออกจากระบบสำเร็จ",
@@ -99,15 +99,17 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 // --- Cookie Helpers ---
 
 func setAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {
+	isProduction := os.Getenv("ENV") == "production"
+
 	// Access Token: 15 minutes
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
 		Value:    accessToken,
 		Path:     "/",
-		MaxAge:   15 * 60, // 15 mins
-		Secure:   false,   // set to true in production if HTTPS
+		MaxAge:   15 * 60, // 15 mins in seconds
+		Secure:   isProduction,
 		HTTPOnly: true,
-		SameSite: "Lax", // Relaxed for cross-port localhost
+		SameSite: fiber.CookieSameSiteLaxMode,
 	})
 
 	// Refresh Token: 7 days
@@ -115,26 +117,13 @@ func setAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {
 		Name:     "refresh_token",
 		Value:    refreshToken,
 		Path:     "/",
-		MaxAge:   7 * 24 * 60 * 60, // 7 days
-		Secure:   false,            // set to true in production if HTTPS
+		MaxAge:   7 * 24 * 60 * 60, // 7 days in seconds
+		Secure:   isProduction,
 		HTTPOnly: true,
-		SameSite: "Lax",
+		SameSite: fiber.CookieSameSiteLaxMode,
 	})
 }
 
 func clearAuthCookies(c fiber.Ctx) {
-	c.Cookie(&fiber.Cookie{
-		Name:     "access_token",
-		Value:    "",
-		Path:     "/",
-		Expires:  time.Now().Add(-1 * time.Hour), // expire immediately
-		HTTPOnly: true,
-	})
-	c.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    "",
-		Path:     "/",
-		Expires:  time.Now().Add(-1 * time.Hour),
-		HTTPOnly: true,
-	})
+	c.ClearCookie("access_token", "refresh_token")
 }

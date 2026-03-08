@@ -14,13 +14,17 @@ func Connect(cfg *config.Config) *gorm.DB {
 	dsn := cfg.DatabaseURL
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		// Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Error),
 	})
 	if err != nil {
 		log.Fatalf("Cannot connect DB %v", err)
 	}
 
-	// Connection pool ตาม GORM docs
+	// Log connect DB
+	log.Println("Connected Database")
+
+	// Connection pool
 	sqlDB, err := db.DB()
 	if err != nil {
 		log.Fatalf("Cannot get sqlDB: %v", err)
@@ -29,6 +33,5 @@ func Connect(cfg *config.Config) *gorm.DB {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	log.Println("Connected Database")
 	return db
 }

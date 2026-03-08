@@ -2,9 +2,8 @@ package middleware
 
 import (
 	"fmt"
+	"nurse-table/internal/logger"
 	"time"
-
-	"nurse-table/internal/utils/logger"
 
 	"github.com/gofiber/fiber/v3"
 )

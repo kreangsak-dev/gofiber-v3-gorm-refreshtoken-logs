@@ -30,12 +30,12 @@ func SetupRoutes(app *fiber.App, ph *handler.ProductHandler, ah *handler.AuthHan
 	products.Get("/:id", ph.GetByID)
 
 	// Protected (ต้อง login)
-	products.Use(middleware.JWTProtected(jwtSecret))
+	products.Use(middleware.JWTProtected(jwtSecret), middleware.ValidateAccessToken())
 	products.Post("/", ph.Create)
 	products.Patch("/:id", ph.Update)
 	products.Delete("/:id", ph.Delete)
 
 	// --- Log routes (protected) ---
-	logs := api.Group("/logs", middleware.JWTProtected(jwtSecret))
+	logs := api.Group("/logs", middleware.JWTProtected(jwtSecret), middleware.ValidateAccessToken())
 	logs.Get("/:type", lh.GetLogs)
 }

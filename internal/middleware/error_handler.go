@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	service "nurse-table/internal/services"
+	"nurse-table/internal/utils"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -41,8 +42,5 @@ func GlobalErrorHandler(c fiber.Ctx, err error) error {
 		log.Printf("[ERROR] %s %s → %v", c.Method(), c.Path(), err)
 	}
 
-	return c.Status(code).JSON(fiber.Map{
-		"success": false,
-		"error":   message,
-	})
+	return utils.ErrorResponse(c, code, message)
 }

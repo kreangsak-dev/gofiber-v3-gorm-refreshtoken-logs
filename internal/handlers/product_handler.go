@@ -3,6 +3,7 @@ package handler
 import (
 	"nurse-table/internal/dto"
 	service "nurse-table/internal/services"
+	"nurse-table/internal/utils"
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
@@ -22,10 +23,7 @@ func (h *ProductHandler) GetAll(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    result,
-	})
+	return utils.SuccessResponse(c, result)
 }
 
 // GET /api/products/:id
@@ -40,10 +38,7 @@ func (h *ProductHandler) GetByID(c fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    result,
-	})
+	return utils.SuccessResponse(c, result)
 }
 
 // POST /api/products (protected)
@@ -59,11 +54,8 @@ func (h *ProductHandler) Create(c fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"success": true,
-		"message": "สร้างสินค้าสำเร็จ",
-		"data":    result,
-	})
+	c.Status(fiber.StatusCreated)
+	return utils.SuccessMessageResponse(c, "สร้างสินค้าสำเร็จ", result)
 }
 
 // PATCH /api/products/:id (protected)
@@ -83,10 +75,7 @@ func (h *ProductHandler) Update(c fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    result,
-	})
+	return utils.SuccessResponse(c, result)
 }
 
 // DELETE /api/products/:id (protected)
@@ -100,10 +89,7 @@ func (h *ProductHandler) Delete(c fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "ลบสินค้าสำเร็จ",
-	})
+	return utils.SuccessMessageResponse(c, "ลบสินค้าสำเร็จ", nil)
 }
 
 // --- Helper ---

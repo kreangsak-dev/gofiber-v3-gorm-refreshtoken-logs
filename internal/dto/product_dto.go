@@ -1,28 +1,5 @@
 package dto
 
-// --- Auth Request ---
-
-type RegisterRequest struct {
-	Username string `json:"username" validate:"required,min=3,max=100"`
-	Password string `json:"password" validate:"required,min=6"`
-}
-
-type LoginRequest struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
-}
-
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" validate:"required"`
-}
-
-// --- Auth Response ---
-
-type AuthResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
 // --- Product Request ---
 
 type CreateProductRequest struct {
