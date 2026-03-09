@@ -3,44 +3,60 @@ import { useNavigate, Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { api } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
+
+const registerSchema = z
+  .object({
+    username: z.string().min(3, "ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร"),
+    password: z.string().min(6, "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร"),
+    confirmPassword: z.string().min(1, "กรุณายืนยันรหัสผ่านอีกครั้ง"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "รหัสผ่านไม่ตรงกัน",
+    path: ["confirmPassword"],
+  });
 
 export default function Register() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  const form = useForm({
+    defaultValues: {
+      username: "",
+      password: "",
+      confirmPassword: "",
+    },
+    validators: {
+      onChange: registerSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setError("");
+      setLoading(true);
 
-    if (password !== confirmPassword) {
-      setError("รหัสผ่านไม่ตรงกัน");
-      return;
-    }
+      try {
+        await api.post("/auth/register", {
+          username: value.username,
+          password: value.password,
+        });
+        // We don't get tokens in data anymore, they are set as HttpOnly cookies automatically.
+        // The backend will return { success: true, message: ..., data: { user_id: ... } } based on our earlier change.
+        setAuth({ id: 0, username: value.username, role: "user" }); // Simplified, normally backend returns user.id
 
-    setLoading(true);
-
-    try {
-      await api.post("/auth/register", { username, password });
-      // We don't get tokens in data anymore, they are set as HttpOnly cookies automatically.
-      // The backend will return { success: true, message: ..., data: { user_id: ... } } based on our earlier change.
-      setAuth({ id: 0, username: username, role: "user" }); // Simplified, normally backend returns user.id
-
-      navigate("/dashboard");
-    } catch (err: unknown) {
-      if (isAxiosError(err)) {
-        setError(err.response?.data?.error || "เกิดข้อผิดพลาดในการลงทะเบียน");
-      } else {
-        setError("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+        navigate("/dashboard");
+      } catch (err: unknown) {
+        if (isAxiosError(err)) {
+          setError(err.response?.data?.error || "เกิดข้อผิดพลาดในการลงทะเบียน");
+        } else {
+          setError("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background selection:bg-primary/30">
@@ -101,105 +117,175 @@ export default function Register() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2 group">
-              <label
-                className="text-sm font-bold text-foreground/80 group-focus-within:text-primary transition-colors block ml-1"
-                htmlFor="username"
-              >
-                ชื่อผู้ใช้
-              </label>
-              <div className="relative">
-                <input
-                  id="username"
-                  type="text"
-                  required
-                  minLength={3}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="flex h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-[15px] font-medium transition-all focus-visible:outline-none focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 hover:border-border hover:bg-background shadow-sm"
-                  placeholder="กรอกชื่อผู้ใช้..."
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 group">
-              <label
-                className="text-sm font-bold text-foreground/80 group-focus-within:text-primary transition-colors block ml-1"
-                htmlFor="password"
-              >
-                รหัสผ่าน
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="flex h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-[15px] font-medium transition-all focus-visible:outline-none focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 hover:border-border hover:bg-background shadow-sm tracking-widest"
-                  placeholder="ความยาวอย่างน้อย 6 ตัวอักษร"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 group">
-              <label
-                className="text-sm font-bold text-foreground/80 group-focus-within:text-primary transition-colors block ml-1"
-                htmlFor="confirmPassword"
-              >
-                ยืนยันรหัสผ่าน
-              </label>
-              <div className="relative">
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="flex h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-[15px] font-medium transition-all focus-visible:outline-none focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 hover:border-border hover:bg-background shadow-sm tracking-widest"
-                  placeholder="ยืนยันรหัสผ่านอีกครั้ง"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative flex items-center justify-center whitespace-nowrap rounded-2xl text-[15px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-70 overflow-hidden h-14 px-8 w-full mt-2 shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 active:scale-[0.98] border border-white/10"
-            >
-              <div className="absolute inset-0 bg-linear-to-r from-indigo-500 via-indigo-600 to-emerald-500 transition-transform duration-500 group-hover:scale-105"></div>
-              <span className="relative text-white flex items-center gap-3 tracking-wide">
-                {loading ? (
-                  <>
-                    <svg
-                      className="animate-spin h-5 w-5 text-white/80"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+            }}
+            className="space-y-6"
+          >
+            <form.Field
+              name="username"
+              children={(field) => (
+                <div className="space-y-2 group">
+                  <label
+                    className="text-sm font-bold text-foreground/80 group-focus-within:text-primary transition-colors block ml-1"
+                    htmlFor={field.name}
+                  >
+                    ชื่อผู้ใช้
+                  </label>
+                  <div className="relative">
+                    <input
+                      id={field.name}
+                      name={field.name}
+                      type="text"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="flex h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-[15px] font-medium transition-all focus-visible:outline-none focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 hover:border-border hover:bg-background shadow-sm"
+                      placeholder="กรอกชื่อผู้ใช้..."
+                    />
+                  </div>
+                  {field.state.meta.errors ? (
+                    <em
+                      role="alert"
+                      className="text-[13px] text-destructive font-medium block ml-2 mt-1"
                     >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    กำลังสร้างบัญชี...
-                  </>
-                ) : (
-                  "สร้างบัญชีใหม่"
-                )}
-              </span>
-            </button>
+                      {field.state.meta.errors
+                        .map((e) =>
+                          typeof e === "string"
+                            ? e
+                            : (e as { message?: string })?.message || String(e),
+                        )
+                        .join(", ")}
+                    </em>
+                  ) : null}
+                </div>
+              )}
+            />
+
+            <form.Field
+              name="password"
+              children={(field) => (
+                <div className="space-y-2 group">
+                  <label
+                    className="text-sm font-bold text-foreground/80 group-focus-within:text-primary transition-colors block ml-1"
+                    htmlFor={field.name}
+                  >
+                    รหัสผ่าน
+                  </label>
+                  <div className="relative">
+                    <input
+                      id={field.name}
+                      name={field.name}
+                      type="password"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="flex h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-[15px] font-medium transition-all focus-visible:outline-none focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 hover:border-border hover:bg-background shadow-sm tracking-widest"
+                      placeholder="ความยาวอย่างน้อย 6 ตัวอักษร"
+                    />
+                  </div>
+                  {field.state.meta.errors ? (
+                    <em
+                      role="alert"
+                      className="text-[13px] text-destructive font-medium block ml-2 mt-1"
+                    >
+                      {field.state.meta.errors
+                        .map((e) =>
+                          typeof e === "string"
+                            ? e
+                            : (e as { message?: string })?.message || String(e),
+                        )
+                        .join(", ")}
+                    </em>
+                  ) : null}
+                </div>
+              )}
+            />
+
+            <form.Field
+              name="confirmPassword"
+              children={(field) => (
+                <div className="space-y-2 group">
+                  <label
+                    className="text-sm font-bold text-foreground/80 group-focus-within:text-primary transition-colors block ml-1"
+                    htmlFor={field.name}
+                  >
+                    ยืนยันรหัสผ่าน
+                  </label>
+                  <div className="relative">
+                    <input
+                      id={field.name}
+                      name={field.name}
+                      type="password"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="flex h-14 w-full rounded-2xl border-2 border-border/50 bg-background/50 px-5 text-[15px] font-medium transition-all focus-visible:outline-none focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 hover:border-border hover:bg-background shadow-sm tracking-widest"
+                      placeholder="ยืนยันรหัสผ่านอีกครั้ง"
+                    />
+                  </div>
+                  {field.state.meta.errors ? (
+                    <em
+                      role="alert"
+                      className="text-[13px] text-destructive font-medium block ml-2 mt-1"
+                    >
+                      {field.state.meta.errors
+                        .map((e) =>
+                          typeof e === "string"
+                            ? e
+                            : (e as { message?: string })?.message || String(e),
+                        )
+                        .join(", ")}
+                    </em>
+                  ) : null}
+                </div>
+              )}
+            />
+
+            <form.Subscribe
+              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              children={([canSubmit, isSubmitting]) => (
+                <button
+                  type="submit"
+                  disabled={!canSubmit || Boolean(isSubmitting) || loading}
+                  className="group relative flex items-center justify-center whitespace-nowrap rounded-2xl text-[15px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-70 overflow-hidden h-14 px-8 w-full mt-2 shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 active:scale-[0.98] border border-white/10"
+                >
+                  <div className="absolute inset-0 bg-linear-to-r from-indigo-500 via-indigo-600 to-emerald-500 transition-transform duration-500 group-hover:scale-105"></div>
+                  <span className="relative text-white flex items-center gap-3 tracking-wide">
+                    {isSubmitting || loading ? (
+                      <>
+                        <svg
+                          className="animate-spin h-5 w-5 text-white/80"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        กำลังสร้างบัญชี...
+                      </>
+                    ) : (
+                      "สร้างบัญชีใหม่"
+                    )}
+                  </span>
+                </button>
+              )}
+            />
           </form>
 
           <div className="mt-10 pt-6 border-t border-border/40 text-center text-[15px] font-medium text-muted-foreground/80">

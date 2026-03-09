@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import { api, apiPrivate, getDashboardSummary } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
+
+const productSchema = z.object({
+  name: z.string().min(1, "กรุณากรอกชื่อสินค้า"),
+  description: z.string().min(1, "กรุณากรอกรายละเอียดสินค้า"),
+  price: z.number().min(0, "ราคาต้องไม่น้อยกว่า 0"),
+  stock: z.number().min(0, "จำนวนซัพพลายต้องไม่น้อยกว่า 0"),
+});
 
 interface Product {
   id: number;
@@ -30,20 +39,13 @@ export default function Dashboard() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    stock: 0,
-  });
-
   const fetchData = async () => {
     setLoading(true);
     setSummaryLoading(true);
     try {
       const [productsRes, summaryRes] = await Promise.all([
         api.get("/products"),
-        getDashboardSummary().catch(() => null), // If fails (e.g. rights issue), fallback to null
+        getDashboardSummary().catch(() => null),
       ]);
       setProducts(productsRes.data.data.items || []);
       if (summaryRes && summaryRes.data) {
@@ -61,25 +63,40 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingId) {
-        await apiPrivate.patch(`/products/${editingId}`, formData);
-      } else {
-        await apiPrivate.post("/products", formData);
-      }
-      setIsModalOpen(false);
-      resetForm();
-      fetchData(); // Refreshes both table and summary widgets to match changes
-    } catch (err: unknown) {
-      if (isAxiosError(err)) {
-        alert(err.response?.data?.error || "เกิดข้อผิดพลาด");
-      } else {
-        alert("เกิดข้อผิดพลาดที่ไม่รู้จัก");
-      }
-    }
+  const resetForm = () => {
+    setEditingId(null);
+    form.reset();
   };
+
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      description: "",
+      price: 0,
+      stock: 0,
+    },
+    validators: {
+      onChange: productSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        if (editingId) {
+          await apiPrivate.patch(`/products/${editingId}`, value);
+        } else {
+          await apiPrivate.post("/products", value);
+        }
+        setIsModalOpen(false);
+        resetForm();
+        fetchData();
+      } catch (err: unknown) {
+        if (isAxiosError(err)) {
+          alert(err.response?.data?.error || "เกิดข้อผิดพลาด");
+        } else {
+          alert("เกิดข้อผิดพลาดที่ไม่รู้จัก");
+        }
+      }
+    },
+  });
 
   const handleDelete = async (id: number) => {
     if (!window.confirm("คุณแน่ใจหรือไม่ที่จะลบสินค้านี้?")) return;
@@ -97,18 +114,11 @@ export default function Dashboard() {
 
   const openEdit = (p: Product) => {
     setEditingId(p.id);
-    setFormData({
-      name: p.name,
-      description: p.description,
-      price: p.price,
-      stock: p.stock,
-    });
+    form.setFieldValue("name", p.name);
+    form.setFieldValue("description", p.description);
+    form.setFieldValue("price", p.price);
+    form.setFieldValue("stock", p.stock);
     setIsModalOpen(true);
-  };
-
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData({ name: "", description: "", price: 0, stock: 0 });
   };
 
   return (
@@ -369,72 +379,158 @@ export default function Dashboard() {
             <h2 className="text-2xl font-extrabold mb-6 tracking-tight">
               {editingId ? "แก้ไขสินค้า" : "เพิ่มสินค้าใหม่"}
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5 group">
-                <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
-                  ชื่อสินค้า
-                </label>
-                <input
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="flex h-11 w-full rounded-xl border border-input/50 bg-background/50 px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all"
-                  placeholder="เช่น รองเท้าผ้าใบ"
-                />
-              </div>
-              <div className="space-y-1.5 group">
-                <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
-                  รายละเอียด
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="flex min-h-[100px] w-full rounded-xl border border-input/50 bg-background/50 px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all resize-none"
-                  placeholder="คำอธิบายสินค้า..."
-                />
-              </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                form.handleSubmit();
+              }}
+              className="space-y-4"
+            >
+              <form.Field
+                name="name"
+                children={(field) => (
+                  <div className="space-y-1.5 group">
+                    <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
+                      ชื่อสินค้า
+                    </label>
+                    <input
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="flex h-11 w-full rounded-xl border border-input/50 bg-background/50 px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all"
+                      placeholder="เช่น รองเท้าผ้าใบ"
+                    />
+                    {field.state.meta.errors ? (
+                      <em
+                        role="alert"
+                        className="text-[13px] text-destructive font-medium block mt-1"
+                      >
+                        {field.state.meta.errors
+                          .map((e) =>
+                            typeof e === "string"
+                              ? e
+                              : (e as { message?: string })?.message ||
+                                String(e),
+                          )
+                          .join(", ")}
+                      </em>
+                    ) : null}
+                  </div>
+                )}
+              />
+
+              <form.Field
+                name="description"
+                children={(field) => (
+                  <div className="space-y-1.5 group">
+                    <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
+                      รายละเอียด
+                    </label>
+                    <textarea
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="flex min-h-[100px] w-full rounded-xl border border-input/50 bg-background/50 px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all resize-none"
+                      placeholder="คำอธิบายสินค้า..."
+                    />
+                    {field.state.meta.errors ? (
+                      <em
+                        role="alert"
+                        className="text-[13px] text-destructive font-medium block mt-1"
+                      >
+                        {field.state.meta.errors
+                          .map((e) =>
+                            typeof e === "string"
+                              ? e
+                              : (e as { message?: string })?.message ||
+                                String(e),
+                          )
+                          .join(", ")}
+                      </em>
+                    ) : null}
+                  </div>
+                )}
+              />
+
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5 group">
-                  <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
-                    ราคา (บาท)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        price: Number(e.target.value),
-                      })
-                    }
-                    className="flex h-11 w-full rounded-xl border border-input/50 bg-background/50 px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all"
-                  />
-                </div>
-                <div className="space-y-1.5 group">
-                  <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
-                    จำนวนซัพพลาย
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={formData.stock}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        stock: Number(e.target.value),
-                      })
-                    }
-                    className="flex h-11 w-full rounded-xl border border-input/50 bg-background/50 px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all"
-                  />
-                </div>
+                <form.Field
+                  name="price"
+                  children={(field) => (
+                    <div className="space-y-1.5 group">
+                      <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
+                        ราคา (บาท)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value))
+                        }
+                        className="flex h-11 w-full rounded-xl border border-input/50 bg-background/50 px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all"
+                      />
+                      {field.state.meta.errors ? (
+                        <em
+                          role="alert"
+                          className="text-[13px] text-destructive font-medium block mt-1"
+                        >
+                          {field.state.meta.errors
+                            .map((e) =>
+                              typeof e === "string"
+                                ? e
+                                : (e as { message?: string })?.message ||
+                                  String(e),
+                            )
+                            .join(", ")}
+                        </em>
+                      ) : null}
+                    </div>
+                  )}
+                />
+
+                <form.Field
+                  name="stock"
+                  children={(field) => (
+                    <div className="space-y-1.5 group">
+                      <label className="text-sm font-semibold text-foreground/90 group-focus-within:text-primary transition-colors">
+                        จำนวนซัพพลาย
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(Number(e.target.value))
+                        }
+                        className="flex h-11 w-full rounded-xl border border-input/50 bg-background/50 px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-input transition-all"
+                      />
+                      {field.state.meta.errors ? (
+                        <em
+                          role="alert"
+                          className="text-[13px] text-destructive font-medium block mt-1"
+                        >
+                          {field.state.meta.errors
+                            .map((e) =>
+                              typeof e === "string"
+                                ? e
+                                : (e as { message?: string })?.message ||
+                                  String(e),
+                            )
+                            .join(", ")}
+                        </em>
+                      ) : null}
+                    </div>
+                  )}
+                />
               </div>
+
               <div className="flex justify-end gap-3 pt-6 mt-4">
                 <button
                   type="button"
@@ -443,12 +539,18 @@ export default function Dashboard() {
                 >
                   ยกเลิก
                 </button>
-                <button
-                  type="submit"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
-                >
-                  บันทึกสินค้า
-                </button>
+                <form.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  children={([canSubmit, isSubmitting]) => (
+                    <button
+                      type="submit"
+                      disabled={!canSubmit || isSubmitting}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {isSubmitting ? "กำลังบันทึก..." : "บันทึกสินค้า"}
+                    </button>
+                  )}
+                />
               </div>
             </form>
           </div>

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { getUsers, createUser, updateUserRole } from "../lib/api";
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
+
+const userSchema = z.object({
+  username: z.string().min(3, "ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร"),
+  password: z.string().min(6, "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร"),
+  role: z.enum(["user", "admin", "super_admin"]),
+});
 
 type User = {
   id: number;
@@ -13,11 +21,29 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Form states
-  const [newUsername, setNewUsername] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState("user");
   const [submitError, setSubmitError] = useState("");
+
+  const form = useForm({
+    defaultValues: {
+      username: "",
+      password: "",
+      role: "user",
+    },
+    validators: {
+      onChange: userSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setSubmitError("");
+      try {
+        await createUser(value);
+        form.reset();
+        fetchUsers();
+      } catch (err: unknown) {
+        const e = err as { response?: { data?: { message?: string } } };
+        setSubmitError(e.response?.data?.message || "Failed to create user");
+      }
+    },
+  });
 
   const fetchUsers = async () => {
     try {
@@ -36,27 +62,6 @@ export default function UserManagement() {
   useEffect(() => {
     fetchUsers();
   }, []);
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitError("");
-    try {
-      await createUser({
-        username: newUsername,
-        password: newPassword,
-        role: newRole,
-      });
-      // Reset form
-      setNewUsername("");
-      setNewPassword("");
-      setNewRole("user");
-      // Refresh list
-      fetchUsers();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setSubmitError(e.response?.data?.message || "Failed to create user");
-    }
-  };
 
   const handleRoleChange = async (userId: number, newRole: string) => {
     try {
@@ -83,55 +88,132 @@ export default function UserManagement() {
       {/* Create User Form */}
       <div className="bg-card text-card-foreground rounded-xl border shadow-sm p-6">
         <h2 className="text-xl font-semibold mb-4">Create New User</h2>
-        <form onSubmit={handleCreateUser} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="space-y-4"
+        >
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium leading-none mb-2 block">
-                Username
-              </label>
-              <input
-                type="text"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                placeholder="New username"
+            <form.Field
+              name="username"
+              children={(field) => (
+                <div>
+                  <label className="text-sm font-medium leading-none mb-2 block">
+                    Username
+                  </label>
+                  <input
+                    name={field.name}
+                    type="text"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    placeholder="New username"
+                  />
+                  {field.state.meta.errors ? (
+                    <em
+                      role="alert"
+                      className="text-[13px] text-destructive font-medium block mt-1"
+                    >
+                      {field.state.meta.errors
+                        .map((e) =>
+                          typeof e === "string"
+                            ? e
+                            : (e as { message?: string })?.message || String(e),
+                        )
+                        .join(", ")}
+                    </em>
+                  ) : null}
+                </div>
+              )}
+            />
+
+            <form.Field
+              name="password"
+              children={(field) => (
+                <div>
+                  <label className="text-sm font-medium leading-none mb-2 block">
+                    Password
+                  </label>
+                  <input
+                    name={field.name}
+                    type="password"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    placeholder="Secure password"
+                  />
+                  {field.state.meta.errors ? (
+                    <em
+                      role="alert"
+                      className="text-[13px] text-destructive font-medium block mt-1"
+                    >
+                      {field.state.meta.errors
+                        .map((e) =>
+                          typeof e === "string"
+                            ? e
+                            : (e as { message?: string })?.message || String(e),
+                        )
+                        .join(", ")}
+                    </em>
+                  ) : null}
+                </div>
+              )}
+            />
+
+            <form.Field
+              name="role"
+              children={(field) => (
+                <div>
+                  <label className="text-sm font-medium leading-none mb-2 block">
+                    Role
+                  </label>
+                  <select
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                  {field.state.meta.errors ? (
+                    <em
+                      role="alert"
+                      className="text-[13px] text-destructive font-medium block mt-1"
+                    >
+                      {field.state.meta.errors
+                        .map((e) =>
+                          typeof e === "string"
+                            ? e
+                            : (e as { message?: string })?.message || String(e),
+                        )
+                        .join(", ")}
+                    </em>
+                  ) : null}
+                </div>
+              )}
+            />
+
+            <div className="flex items-end mb-[2px]">
+              <form.Subscribe
+                selector={(state) => [state.canSubmit, state.isSubmitting]}
+                children={([canSubmit, isSubmitting]) => (
+                  <button
+                    type="submit"
+                    disabled={!canSubmit || isSubmitting}
+                    className="h-10 px-4 py-2 w-full bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Creating..." : "Create"}
+                  </button>
+                )}
               />
-            </div>
-            <div>
-              <label className="text-sm font-medium leading-none mb-2 block">
-                Password
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                placeholder="Secure password"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium leading-none mb-2 block">
-                Role
-              </label>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="super_admin">Super Admin</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="h-10 px-4 py-2 w-full bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors"
-              >
-                Create
-              </button>
             </div>
           </div>
           {submitError && (

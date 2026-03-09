@@ -69,3 +69,7 @@
 [AUTH] 2026/03/08 17:10:47 User logged out
 [AUTH] 2026/03/08 17:23:40 User logged in: test02
 [AUTH] 2026/03/08 17:23:56 User logged out
+[AUTH] 2026/03/09 20:36:10 ERROR: Login failed (wrong password) for: test02
+[AUTH] 2026/03/09 20:36:14 User logged in: test02
+[AUTH] 2026/03/09 20:40:40 User logged out
+[AUTH] 2026/03/09 20:50:11 User logged in: test02
